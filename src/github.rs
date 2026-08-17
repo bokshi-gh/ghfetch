@@ -84,9 +84,8 @@ impl GitHubClient {
         owner: &str,
         repo: &str,
     ) -> Result<String> {
-        let url = format!(
-            "{API_URL}/repos/{owner}/{repo}"
-        );
+        let url =
+            format!("{API_URL}/repos/{owner}/{repo}");
 
         let response = self
             .client
