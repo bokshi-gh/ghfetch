@@ -12,8 +12,11 @@ pub struct Args {
 
     /// Output path
     ///
-    /// For directories/repositories: destination directory.
-    /// For files: filename or existing directory.
+    /// For repositories and directories:
+    /// destination directory.
+    ///
+    /// For files:
+    /// filename or existing directory.
     #[arg(short, long)]
     pub output: Option<String>,
 
