@@ -24,7 +24,10 @@ async fn main() -> Result<()> {
 
     let client = GitHubClient::new(token)?;
 
-    let downloader = Downloader::new(client, args.output);
+    let downloader = Downloader::new(
+        client,
+        args.output,
+    );
 
     downloader.fetch(github_url).await?;
 
