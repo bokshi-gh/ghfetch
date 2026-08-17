@@ -10,9 +10,12 @@ pub struct Args {
     /// GitHub URL
     pub url: String,
 
-    /// Output directory
-    #[arg(short, long, default_value = ".")]
-    pub output: String,
+    /// Output path
+    ///
+    /// For directories/repositories: destination directory.
+    /// For files: filename or existing directory.
+    #[arg(short, long)]
+    pub output: Option<String>,
 
     /// GitHub personal access token
     #[arg(short, long)]
