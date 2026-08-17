@@ -15,128 +15,73 @@ pub struct Downloader {
 }
 
 impl Downloader {
-    pub fn new(
-        client: GitHubClient,
-        output: Option<String>,
-    ) -> Self {
+    pub fn new(client: GitHubClient, output: Option<String>) -> Self {
         Self {
             client,
             output: output.map(PathBuf::from),
         }
     }
 
-    pub async fn fetch(
-        &self,
-        mut github_url: GitHubUrl,
-    ) -> Result<()> {
+    pub async fn fetch(&self, mut github_url: GitHubUrl) -> Result<()> {
         match github_url.resource {
             GitHubResource::Repository => {
                 let branch = self
                     .client
-                    .get_default_branch(
-                        &github_url.owner,
-                        &github_url.repo,
-                    )
+                    .get_default_branch(&github_url.owner, &github_url.repo)
                     .await?;
 
                 github_url.branch = Some(branch);
 
-                let destination =
-                    self.directory_destination(
-                        &github_url.repo,
-                    );
+                let destination = self.directory_destination(&github_url.repo);
 
                 fs::create_dir_all(&destination)
                     .await
-                    .context(
-                        "failed to create output directory",
-                    )?;
+                    .context("failed to create output directory")?;
 
-                println!(
-                    "fetch repository → {}",
-                    destination.display()
-                );
+                println!("fetch repository → {}", destination.display());
 
-                self.fetch_directory(
-                    &github_url,
-                    "",
-                    &destination,
-                )
-                .await?;
+                self.fetch_directory(&github_url, "", &destination).await?;
             }
 
             GitHubResource::Directory => {
-                let directory_name =
-                    Path::new(&github_url.path)
-                        .file_name()
-                        .and_then(|name| name.to_str())
-                        .context(
-                            "could not determine directory name",
-                        )?;
+                let directory_name = Path::new(&github_url.path)
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .context("could not determine directory name")?;
 
-                let destination =
-                    self.directory_destination(
-                        directory_name,
-                    );
+                let destination = self.directory_destination(directory_name);
 
                 fs::create_dir_all(&destination)
                     .await
-                    .context(
-                        "failed to create output directory",
-                    )?;
+                    .context("failed to create output directory")?;
 
-                println!(
-                    "fetch directory → {}",
-                    destination.display()
-                );
+                println!("fetch directory → {}", destination.display());
 
-                self.fetch_directory(
-                    &github_url,
-                    "",
-                    &destination,
-                )
-                .await?;
+                self.fetch_directory(&github_url, "", &destination).await?;
             }
 
             GitHubResource::File => {
-                let entries = self
-                    .client
-                    .get_contents(&github_url)
-                    .await?;
+                let entries = self.client.get_contents(&github_url).await?;
 
-                let file = entries
-                    .into_iter()
-                    .next()
-                    .context("file not found")?;
+                let file = entries.into_iter().next().context("file not found")?;
 
-                let destination =
-                    self.file_destination(&file)?;
+                let destination = self.file_destination(&file)?;
 
-                self.download_file(
-                    &file,
-                    &destination,
-                )
-                .await?;
+                self.download_file(&file, &destination).await?;
             }
         }
 
         Ok(())
     }
 
-    fn directory_destination(
-        &self,
-        default_name: &str,
-    ) -> PathBuf {
+    fn directory_destination(&self, default_name: &str) -> PathBuf {
         match &self.output {
             Some(output) => output.clone(),
             None => PathBuf::from(default_name),
         }
     }
 
-    fn file_destination(
-        &self,
-        file: &Content,
-    ) -> Result<PathBuf> {
+    fn file_destination(&self, file: &Content) -> Result<PathBuf> {
         let file_name = Path::new(&file.name);
 
         match &self.output {
@@ -166,62 +111,36 @@ impl Downloader {
         } else if github_url.path.is_empty() {
             relative_path.to_string()
         } else {
-            format!(
-                "{}/{}",
-                github_url.path,
-                relative_path
-            )
+            format!("{}/{}", github_url.path, relative_path)
         };
 
-        let entries = self
-            .client
-            .get_contents(&url)
-            .await?;
+        let entries = self.client.get_contents(&url).await?;
 
         for entry in entries {
             let relative = if relative_path.is_empty() {
                 entry.name.clone()
             } else {
-                format!(
-                    "{}/{}",
-                    relative_path,
-                    entry.name
-                )
+                format!("{}/{}", relative_path, entry.name)
             };
 
             match entry.entry_type {
                 EntryType::File => {
-                    let file_path =
-                        destination.join(&relative);
+                    let file_path = destination.join(&relative);
 
-                    self.download_file(
-                        &entry,
-                        &file_path,
-                    )
-                    .await?;
+                    self.download_file(&entry, &file_path).await?;
                 }
 
                 EntryType::Dir => {
-                    self.fetch_directory(
-                        github_url,
-                        &relative,
-                        destination,
-                    )
-                    .await?;
+                    self.fetch_directory(github_url, &relative, destination)
+                        .await?;
                 }
 
                 EntryType::Symlink => {
-                    eprintln!(
-                        "skip symlink: {}",
-                        entry.path
-                    );
+                    eprintln!("skip symlink: {}", entry.path);
                 }
 
                 EntryType::Submodule => {
-                    eprintln!(
-                        "skip submodule: {}",
-                        entry.path
-                    );
+                    eprintln!("skip submodule: {}", entry.path);
                 }
             }
         }
@@ -229,44 +148,25 @@ impl Downloader {
         Ok(())
     }
 
-    async fn download_file(
-        &self,
-        entry: &Content,
-        destination: &Path,
-    ) -> Result<()> {
+    async fn download_file(&self, entry: &Content, destination: &Path) -> Result<()> {
         let download_url = entry
             .download_url
             .as_deref()
-            .context(
-                "GitHub did not provide a download URL",
-            )?;
+            .context("GitHub did not provide a download URL")?;
 
         if let Some(parent) = destination.parent() {
             fs::create_dir_all(parent)
                 .await
-                .context(
-                    "failed to create directory",
-                )?;
+                .context("failed to create directory")?;
         }
 
-        println!(
-            "fetch {}",
-            destination.display()
-        );
+        println!("fetch {}", destination.display());
 
-        let data = self
-            .client
-            .download(download_url)
-            .await?;
+        let data = self.client.download(download_url).await?;
 
         fs::write(destination, data)
             .await
-            .with_context(|| {
-                format!(
-                    "failed to write {}",
-                    destination.display()
-                )
-            })?;
+            .with_context(|| format!("failed to write {}", destination.display()))?;
 
         Ok(())
     }

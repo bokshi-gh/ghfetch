@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use url::Url;
 
 #[derive(Debug, Clone, Copy)]
@@ -19,8 +19,7 @@ pub struct GitHubUrl {
 
 impl GitHubUrl {
     pub fn parse(input: &str) -> Result<Self> {
-        let url = Url::parse(input)
-            .with_context(|| format!("invalid URL: {input}"))?;
+        let url = Url::parse(input).with_context(|| format!("invalid URL: {input}"))?;
 
         if url.scheme() != "https" {
             bail!("URL must use HTTPS");
