@@ -10,7 +10,10 @@ pub enum GitHubError {
 }
 
 impl fmt::Display for GitHubError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
         match self {
             Self::Unauthorized => {
                 write!(f, "authentication required")
@@ -21,11 +24,17 @@ impl fmt::Display for GitHubError {
             }
 
             Self::NotFound => {
-                write!(f, "repository or resource not found")
+                write!(
+                    f,
+                    "repository or resource not found"
+                )
             }
 
             Self::RateLimited => {
-                write!(f, "GitHub API rate limit exceeded")
+                write!(
+                    f,
+                    "GitHub API rate limit exceeded"
+                )
             }
 
             Self::Api(message) => {
