@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use async_recursion::async_recursion;
 use tokio::fs;
 
 use crate::{
@@ -59,6 +60,7 @@ impl Downloader {
         Ok(())
     }
 
+    #[async_recursion]
     async fn fetch_directory(
         &self,
         github_url: &GitHubUrl,
@@ -133,7 +135,7 @@ impl Downloader {
         entry: &Content,
         relative_path: &str,
     ) -> Result<()> {
-        let url = entry
+        let download_url = entry
             .download_url
             .as_deref()
             .context(
@@ -158,7 +160,7 @@ impl Downloader {
 
         let data = self
             .client
-            .download(url)
+            .download(download_url)
             .await?;
 
         fs::write(&destination, data)
