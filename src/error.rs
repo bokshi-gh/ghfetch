@@ -38,7 +38,10 @@ impl fmt::Display for GitHubError {
             }
 
             Self::Api(message) => {
-                write!(f, "GitHub API error: {message}")
+                write!(
+                    f,
+                    "GitHub API error: {message}"
+                )
             }
         }
     }
