@@ -95,13 +95,4 @@ impl GitHubUrl {
             resource,
         })
     }
-
-    pub fn api_url(&self) -> String {
-        format!(
-            "https://api.github.com/repos/{}/{}/contents/{}",
-            self.owner,
-            self.repo,
-            self.path
-        )
-    }
 }
