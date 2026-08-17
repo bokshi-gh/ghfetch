@@ -15,6 +15,6 @@ pub struct Args {
     pub output: String,
 
     /// GitHub personal access token
-    #[arg(short, long, env = "GITHUB_TOKEN", hide_env_values = true)]
+    #[arg(short, long, hide_env_values = true)]
     pub token: Option<String>,
 }
