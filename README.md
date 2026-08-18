@@ -57,14 +57,6 @@ The binary is installed to:
 %USERPROFILE%\.ghfetch\bin
 ```
 
-### Cargo
-
-If you have Rust and Cargo installed:
-
-```bash
-cargo install ghfetch
-```
-
 ### From source
 
 Clone the repository:
