@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Release
+  build:
+    name: Build (${{ matrix.target }})
     runs-on: ubuntu-latest
 
     strategy:
@@ -31,9 +31,21 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build
+      - name: Install cargo-xwin
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        run: cargo install cargo-xwin
+
+      - name: Build Linux
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
           cargo build \
+            --release \
+            --target ${{ matrix.target }}
+
+      - name: Build Windows
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        run: |
+          cargo xwin build \
             --release \
             --target ${{ matrix.target }}
 
@@ -41,35 +53,49 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
           mkdir package
-          cp target/${{ matrix.target }}/release/ghfetch package/ghfetch
-          tar -czf ${{ matrix.asset }} -C package ghfetch
+
+          cp \
+            target/${{ matrix.target }}/release/ghfetch \
+            package/ghfetch
+
+          tar \
+            -czf ${{ matrix.asset }} \
+            -C package \
+            ghfetch
 
       - name: Package Windows
         if: matrix.target == 'x86_64-pc-windows-msvc'
         run: |
           mkdir package
-          cp target/${{ matrix.target }}/release/ghfetch.exe package/ghfetch.exe
-          cd package
-          zip ../${{ matrix.asset }} ghfetch.exe
 
-      - name: Upload release asset
+          cp \
+            target/${{ matrix.target }}/release/ghfetch.exe \
+            package/ghfetch.exe
+
+          cd package
+
+          zip \
+            ../${{ matrix.asset }} \
+            ghfetch.exe
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}
 
-  publish:
-    name: Publish GitHub Release
-    needs: release
+  release:
+    name: Create GitHub Release
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download release assets
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Create GitHub Release
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
