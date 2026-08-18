@@ -9,9 +9,59 @@ permissions:
   contents: write
 
 jobs:
-  linux:
-    name: Linux (x86_64)
-    runs-on: ubuntu-latest
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        include:
+          # Linux
+          - name: Linux (x86_64)
+            os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            archive: ghfetch-linux-x86_64.tar.gz
+            binary: ghfetch
+            format: tar.gz
+
+          - name: Linux (aarch64)
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            archive: ghfetch-linux-aarch64.tar.gz
+            binary: ghfetch
+            format: tar.gz
+
+          # macOS
+          - name: macOS (x86_64)
+            os: macos-15-intel
+            target: x86_64-apple-darwin
+            archive: ghfetch-macos-x86_64.tar.gz
+            binary: ghfetch
+            format: tar.gz
+
+          - name: macOS (aarch64)
+            os: macos-15
+            target: aarch64-apple-darwin
+            archive: ghfetch-macos-aarch64.tar.gz
+            binary: ghfetch
+            format: tar.gz
+
+          # Windows
+          - name: Windows (x86_64)
+            os: windows-2025
+            target: x86_64-pc-windows-msvc
+            archive: ghfetch-windows-x86_64.zip
+            binary: ghfetch.exe
+            format: zip
+
+          - name: Windows (aarch64)
+            os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            archive: ghfetch-windows-aarch64.zip
+            binary: ghfetch.exe
+            format: zip
 
     steps:
       - name: Checkout
@@ -19,44 +69,29 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Package
+      - name: Package Unix
+        if: matrix.format == 'tar.gz'
+        shell: bash
         run: |
-          mkdir package
+          mkdir -p package
 
           cp \
-            target/release/ghfetch \
-            package/ghfetch
+            "target/${{ matrix.target }}/release/${{ matrix.binary }}" \
+            "package/${{ matrix.binary }}"
 
           tar \
-            -czf ghfetch-linux-x86_64.tar.gz \
+            -czf "${{ matrix.archive }}" \
             -C package \
-            ghfetch
+            "${{ matrix.binary }}"
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ghfetch-linux-x86_64
-          path: ghfetch-linux-x86_64.tar.gz
-
-  windows:
-    name: Windows (x86_64)
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build
-        run: cargo build --release
-
-      - name: Package
+      - name: Package Windows
+        if: matrix.format == 'zip'
         shell: pwsh
         run: |
           New-Item `
@@ -65,61 +100,26 @@ jobs:
             package
 
           Copy-Item `
-            target\release\ghfetch.exe `
-            package\ghfetch.exe
+            "target\${{ matrix.target }}\release\${{ matrix.binary }}" `
+            "package\${{ matrix.binary }}"
 
           Compress-Archive `
-            -Path package\ghfetch.exe `
-            -DestinationPath ghfetch-windows-x86_64.zip
+            -Path "package\${{ matrix.binary }}" `
+            -DestinationPath "${{ matrix.archive }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ghfetch-windows-x86_64
-          path: ghfetch-windows-x86_64.zip
-
-  macos:
-    name: macOS (aarch64)
-    runs-on: macos-14
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build
-        run: cargo build --release
-
-      - name: Package
-        run: |
-          mkdir package
-
-          cp \
-            target/release/ghfetch \
-            package/ghfetch
-
-          tar \
-            -czf ghfetch-macos-aarch64.tar.gz \
-            -C package \
-            ghfetch
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ghfetch-macos-aarch64
-          path: ghfetch-macos-aarch64.tar.gz
+          name: ghfetch-${{ matrix.target }}
+          path: ${{ matrix.archive }}
 
   release:
     name: Create GitHub Release
 
     needs:
-      - linux
-      - windows
-      - macos
+      - build
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Download artifacts
