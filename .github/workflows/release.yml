@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     name: Build ${{ matrix.target }}
     runs-on: ubuntu-latest
 
@@ -22,17 +22,17 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             archive: ghfetch-linux-aarch64.tar.gz
 
-          - target: x86_64-pc-windows-msvc
-            archive: ghfetch-windows-x86_64.zip
-
-          - target: aarch64-pc-windows-msvc
-            archive: ghfetch-windows-aarch64.zip
-
           - target: x86_64-apple-darwin
             archive: ghfetch-macos-x86_64.tar.gz
 
           - target: aarch64-apple-darwin
             archive: ghfetch-macos-aarch64.tar.gz
+
+          - target: x86_64-pc-windows-msvc
+            archive: ghfetch-windows-x86_64.zip
+
+          - target: aarch64-pc-windows-msvc
+            archive: ghfetch-windows-aarch64.zip
 
     steps:
       - name: Checkout
@@ -55,17 +55,26 @@ jobs:
           mkdir package
 
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
-            cp "target/${{ matrix.target }}/release/ghfetch.exe" \
+            cp \
+              "target/${{ matrix.target }}/release/ghfetch.exe" \
               package/ghfetch.exe
 
             cd package
-            zip "../${{ matrix.archive }}" ghfetch.exe
+
+            zip \
+              "../${{ matrix.archive }}" \
+              ghfetch.exe
           else
-            cp "target/${{ matrix.target }}/release/ghfetch" \
+            cp \
+              "target/${{ matrix.target }}/release/ghfetch" \
               package/ghfetch
 
             cd package
-            tar -czf "../${{ matrix.archive }}" ghfetch
+
+            tar \
+              -czf \
+              "../${{ matrix.archive }}" \
+              ghfetch
           fi
 
       - name: Upload artifact
@@ -74,9 +83,9 @@ jobs:
           name: ${{ matrix.archive }}
           path: ${{ matrix.archive }}
 
-  publish:
-    name: Publish Release
-    needs: release
+  release:
+    name: Create GitHub Release
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
@@ -85,7 +94,7 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create GitHub Release
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
